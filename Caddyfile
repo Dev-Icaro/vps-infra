@@ -1,4 +1,4 @@
 # nexora backend
-api.yourdomain.com {
+api.nexora.kiiler.com {
     reverse_proxy nexora-backend:4000
 }
