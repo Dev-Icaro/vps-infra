@@ -1,0 +1,4 @@
+# nexora backend
+api.yourdomain.com {
+    reverse_proxy nexora-backend:4000
+}
