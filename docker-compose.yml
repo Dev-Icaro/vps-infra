@@ -15,8 +15,8 @@ services:
 
 networks:
   proxy:
+    external: true
     name: proxy
-    driver: bridge
 
 volumes:
   caddy_data:
