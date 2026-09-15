@@ -2,3 +2,7 @@
 api.nexora.kiiler.com {
 	reverse_proxy nexora-backend:4000
 }
+
+api.athena.kiiler.com {
+	reverse_proxy athena-backend:3000
+}
