@@ -13,6 +13,57 @@ services:
     networks:
       - proxy
 
+  # Shared Redis: db 0 = Celery broker (athena), db 6 = Evolution API cache.
+  # Internal only — no published ports.
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    environment:
+      - REDISCLI_AUTH=${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: >
+      sh -c 'exec redis-server
+      --requirepass "$$REDISCLI_AUTH"
+      --appendonly yes
+      --save 900 1 --save 300 10 --save 60 10000
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - proxy
+
+  # WhatsApp gateway used by athena-backend. Internal only — the app reaches it
+  # at http://evolution-api:8080 over the proxy network.
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: evolution-api
+    restart: unless-stopped
+    environment:
+      - SERVER_URL=http://evolution-api:8080
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:?EVOLUTION_API_KEY is required}
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=false
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=${EVOLUTION_DATABASE_URI:?EVOLUTION_DATABASE_URI is required}
+      - DATABASE_CONNECTION_CLIENT_NAME=athena_prod
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://:${REDIS_PASSWORD}@redis:6379/6
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_LOCAL_ENABLED=false
+      - WEBHOOK_GLOBAL_ENABLED=false
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks:
+      - proxy
+
 networks:
   proxy:
     external: true
@@ -21,3 +72,5 @@ networks:
 volumes:
   caddy_data:
   caddy_config:
+  redis_data:
+  evolution_instances:
